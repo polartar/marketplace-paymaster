@@ -3,22 +3,97 @@ const { parseEther } = require("ethers/lib/utils");
 const { ethers } = require("hardhat");
 
 describe("Marketplace TEST", function () {
-  let marketplaveFactory;
+  let marketplaceFactory;
+  let mockERC1155Factory;
+  let mockERC721Factory;
+  let tokenRegistryFactory;
+  let mockERC20Factory;
 
-  let marketplae;
+  let marketplace;
+  let mockERC1155;
+  let mockERC721;
+  let tokenRegistery;
+  let mockERC20;
   let owner, other, author, curreny;
 
   before(async function() {
     [owner, other, author, curreny] = await ethers.getSigners();
-    marketplaveFactory = await ethers.getContractFactory("Marketplace");
+    marketplaceFactory = await ethers.getContractFactory("Marketplace");
+    mockERC1155Factory = await ethers.getContractFactory("MockERC1155");
+    mockERC721Factory = await ethers.getContractFactory("MockERC721");
+    tokenRegistryFactory = await ethers.getContractFactory("TokenRegistery");
+    mockERC20Factory = await ethers.getContractFactory("MockERC20");
   })
 
   beforeEach(async function() {
-    marketplae = await marketplaveFactory.deploy();
+    mockERC1155 = await mockERC1155Factory.deploy();
+    await mockERC1155.deployed();
+   
+    mockERC721 = await mockERC721Factory.deploy();
+    await mockERC721.deployed();
+
+    tokenRegistery = await tokenRegisteryFactory.deploy();
+    await tokenRegistery.deployed();
+
+    mockERC20 = await mockERC20Factory.deploy();
+    await mockERC20.deployed();
+
+    await mockERC1155.mint(1, 4);
+
+    marketplace = await marketplaceFactory.deploy(mockERC20.address);
     await marketplae.deployed();
   })
-  it("Should mint", async function () {
- 
+  it("Should only list ERC721 or ERC1155", async function () {
+    await expect(marketplace.list(owner.address, 1, parseEther("100"), 1)).to.be.reverted;
+   });
+
+  it("Should not list if the price is less than min price", async function () {
+    await expect(marketplace.list(owner.address, 1, parseEther("0.9"), 1)).to.be.revertedWith("Price less than minimum");
+  });
+  
+  it("Should not list with quantity = 0", async function () {
+    await expect(marketplace.list(owner.address, 1, parseEther("0.9"), 0)).to.be.revertedWith("Quantity is 0");
+   });
+
+  it("Should not list when not insufficient balance", async function () {
+    await expect(marketplace.list(owner.address, 1, parseEther("0.9"), 5)).to.be.revertedWith("insufficient balance");
    });
   
+  it("Should list NFT", async function () {
+    await marketplace.list(mockERC1155.address, 1, parseEther("1"), 3);
+    expect(await marketplace.balanceOf(marketplace.address, 1)).to.be.equal(3);
+    expect(await marketplace.balanceOf(owner.address, 1)).to.be.equal(1);
+
+    const id = ethers.utils.solidityKeccak256(["address", "address", "uint256", "uint256"], [owner.address, mockERC1155.address, 1, parseEther("1")]);
+    expect(await marketplace.isExistId(id)).to.be.equal(true);
+   });
+
+  it("Should get list with id", async function () {
+    await marketplace.list(mockERC1155.address, 1, parseEther("1"), 3);
+    const id = ethers.utils.solidityKeccak256(["address", "address", "uint256", "uint256"], [owner.address, mockERC1155.address, 1, parseEther("1")]);
+   
+    const list = await marketplace.getListing(id);
+    expecdt(list.seller).to.be.equal(owner.address);
+    expecdt(list.contractAddress).to.be.equal(mockERC1155.address);
+    expecdt(list.price).to.be.equal(parseEther("1"));
+    expecdt(list.quantity).to.be.equal(3);
+  });
+
+  it("Should buy the NFT with token", async function () {
+    const id = ethers.utils.solidityKeccak256(["address", "address", "uint256", "uint256"], [owner.address, mockERC1155.address, 1, parseEther("1")]);
+    await expect(marketplace.buyWithToken(id, mockERC20.address, 1)).to.be.revertedWith("not existing id");
+    await marketplace.list(mockERC1155.address, 1, parseEther("1"), 3);
+
+    mockAnotherERC20 = await mockERC20Factory.deploy();
+    await mockAnotherERC20.deployed();
+    await expect(marketplace.buyWithToken(id, mockAnotherERC20.address, 1)).to.be.revertedWith("not registerd token");
+
+    await expect(marketplace.connect(other).buyWithToken(id, mockERC20.address, 1)).to.be.reverted;
+
+    mockERC20.transfer(other.address, parseEther("1"));
+    mockERC20.approve(marketplace.address, parseEther("1"));
+
+    await expect(marketplace.connect(other).buyWithToken(id, mockERC20.address, 1)).to.be.changeTokenBalance(mockERC20, owner, parseEther("1"));
+    expect(await mockERC1155.balanceOf(other.address)).to.be.equal(1);
+  });
 });

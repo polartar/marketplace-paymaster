@@ -1,17 +1,22 @@
 // SDPX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165CheckerUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@opengsn/contracts/src/BaseRelayRecipient.sol";
 import "./lib/keyset.sol";
 
 /* We may need to modify the ERCRegistery
   - whenToken :  if the token is no registered, it will return true;
+  - We should have the function to check if the address is registered
+  - I am wondering if we need to check the decimals. If the frontend manage this, we don't need it
+  - how can we manage the price with different tokens or etherem
+  - there should be cancelsale
 */
 interface IERC20Registry {
     function register(address _addr, string memory _symbol, uint _decimals, string memory _name) external payable returns (bool);
@@ -41,7 +46,7 @@ struct Listing {
     uint quantity;
 }
 
-contract Marketplace is Pausable, Ownable {
+contract Marketplace is PausableUpgradeable, OwnableUpgradeable, UUPSUpgradeable {
     event NewListing(    
         address seller,
         address contractAddress,
@@ -51,7 +56,7 @@ contract Marketplace is Pausable, Ownable {
         bytes32 listingId
     );
 
-    event Sale(    
+    event SaleWithToken(    
         address seller,
         address buyer,
         address contractAddress,
@@ -59,24 +64,38 @@ contract Marketplace is Pausable, Ownable {
         uint price,
         bytes32 listingId
     );
+    event Sale(    
+        address seller,
+        address buyer,
+        uint tokenId,
+        uint price,
+        bytes32 listingId
+    );
 
-    using ERC165Checker for address;
+    event CancelSale(    
+        address seller,
+        uint tokenId,
+        uint price,
+        bytes32 listingId
+    );
+
+    using ERC165CheckerUpgradeable for address;
     using KeySetLib for KeySetLib.Set;
 
     mapping (bytes32 => Listing) listings;
     
     KeySetLib.Set set;
 
-    IERC20Registry internal registryAddress;
+    IERC20Registry immutable internal registryAddress;
     uint public minPrice;
     uint public maxPrice;
 
-    bytes4 public constant IID_IERC1155 = type(IERC1155).interfaceId;
-    bytes4 public constant IID_IERC721 = type(IERC721).interfaceId;
+    bytes4 public constant IID_IERC1155 = type(IERC1155Upgradeable).interfaceId;
+    bytes4 public constant IID_IERC721 = type(IERC721Upgradeable).interfaceId;
 
     constructor (address _registryAddress) {
         registryAddress = IERC20Registry(_registryAddress);
-        minPrice = 1;
+        minPrice = 1 ether;
         maxPrice = type(uint).max;
     }
    
@@ -84,9 +103,19 @@ contract Marketplace is Pausable, Ownable {
     //     return listings;
     // }
 
-    modifier onlyNFT(address _nftAddress) {
-        require(_nftAddress.supportsInterface(IID_IERC1155) || _nftAddress.supportsInterface(IID_IERC721));
+    modifier onlyNFT(address _address) {
+        require(isERC1155(_address) || isERC721(_address));
         _;
+    }
+
+    function _authorizeUpgrade(address newImplementation) internal onlyOwner override {}
+
+    function isERC721(address _address) public view returns (bool) {
+        return _address.supportsInterface(IID_IERC721);
+    }
+
+    function isERC1155(address _address) public view returns (bool) {
+        return _address.supportsInterface(IID_IERC1155);
     }
 
     function getListingCount () public view returns (uint) {
@@ -109,17 +138,33 @@ contract Marketplace is Pausable, Ownable {
         return keccak256(abi.encode(_seller, _contractAddress, _tokenId, _price));
     }
 
-    function list (address contractAddress, uint tokenId, uint price, uint quantity) public onlyNFT(contractAddress) whenNotPaused returns (bytes32) {
-        Listing memory l = Listing(msg.sender, contractAddress, tokenId, price, quantity);
+    function isExistId(bytes32 id) public view returns (bool) {
+        return set.exists(id);
+    }
 
+    function list (address contractAddress, uint tokenId, uint price, uint quantity) public onlyNFT(contractAddress) whenNotPaused returns (bytes32) {
         require(price >= minPrice, 'Price less than minimum');
         require(price < maxPrice, 'Price more than maximum');
         require(quantity > 0, 'Quantity is 0');
+        
+        if (isERC1155(contractAddress)) {
+            if (IERC1155Upgradeable(contractAddress).balanceOf(msg.sender, tokenId) < quantity) {
+                revert("insufficient balance");
+            }
+            IERC1155Upgradeable(contractAddress).safeTransferFrom(msg.sender, address(this), tokenId, quantity, "0x0");
+        } else {
+            if (IERC721Upgradeable(contractAddress).ownerOf(tokenId) == msg.sender) {
+                revert("not owner of token");
+            }
+            require(quantity == 1, "quantity should be 1");
+            IERC721Upgradeable(contractAddress).transferFrom(msg.sender, address(this), tokenId);
+        }
 
         bytes32 id = _generateId(msg.sender, contractAddress, tokenId, price);
-        listings[id] = l;
+        require(!isExistId(id), 'Listing already exists');
 
-        require(!set.exists(id), 'Listing already exists');
+        Listing memory l = Listing(msg.sender, contractAddress, tokenId, price, quantity);
+        listings[id] = l;
         set.insert(id);
 
         emit NewListing(
@@ -134,17 +179,26 @@ contract Marketplace is Pausable, Ownable {
         return id;
     }
 
-    function buy (bytes32 id, uint quantity) public whenNotPaused {
-        ERC20 token = ERC20(registryAddress);
+    function buyWithToken (bytes32 id, address paymentMethod, uint quantity) public whenNotPaused {
+        require(isExistId(id), "not existing id");
+        (uint index, , uint decimals,) = registryAddress.fromAddress(paymentMethod);
+        if (index ==0) {
+            revert("not registerd token");
+        }
+        IERC20Upgradeable token = IERC20Upgradeable(paymentMethod);
 
         Listing memory l = listings[id];
-        ERC1155 nft = ERC1155(l.contractAddress);
+        address nft = l.contractAddress;
 
         require(l.quantity >= quantity, 'Quantity unavailable');
         require(l.seller != msg.sender, 'Buyer cannot be seller');
         require(token.transferFrom(msg.sender, l.seller, l.price * quantity));
         
-        nft.safeTransferFrom(l.seller, msg.sender, l.tokenId, quantity, "0x0");
+        if (isERC1155(nft)) {
+            IERC1155Upgradeable(nft).safeTransferFrom(address(this), msg.sender, l.tokenId, quantity, "0x0");
+        } else {
+            IERC721Upgradeable(nft).transferFrom(address(this), msg.sender, l.tokenId);
+        }
 
         l.quantity -= quantity;
         listings[id] = l;
@@ -154,7 +208,56 @@ contract Marketplace is Pausable, Ownable {
             delete listings[id];
         }
 
-        emit Sale(l.seller, msg.sender, l.contractAddress, l.tokenId, l.price, id);
+        emit SaleWithToken(l.seller, msg.sender, l.contractAddress, l.tokenId, l.price, id);
+    }
+
+    function buy (bytes32 id, uint quantity) public payable whenNotPaused {
+        require(isExistId(id), "not existing id");
+        Listing memory l = listings[id];
+        address nft = l.contractAddress;
+
+        require(l.quantity >= quantity, 'Quantity unavailable');
+        require(l.seller != msg.sender, 'Buyer cannot be seller');
+        require(msg.value >= l.price * quantity, "invalid amount");
+
+        (bool success, ) = payable(l.seller).call{value: l.price * quantity}("");
+        require(success, "failed to transfer");
+        
+        if (isERC1155(nft)) {
+            IERC1155Upgradeable(nft).safeTransferFrom(l.seller, msg.sender, l.tokenId, quantity, "0x0");
+        } else {
+            IERC721Upgradeable(nft).safeTransferFrom(l.seller, msg.sender, l.tokenId);
+        }
+
+        l.quantity -= quantity;
+        listings[id] = l;
+
+        if (l.quantity == 0) {
+            set.remove(id);
+            delete listings[id];
+        }
+
+        emit Sale(l.seller, msg.sender, l.tokenId, l.price, id);
+    }
+
+    function cancelList (bytes32 id) public {
+        require(isExistId(id), "not existing id");
+        Listing memory l = listings[id];
+        require(l.seller == msg.sender, "not list owner");
+        require(l.quantity > 0, "no quanity");
+        address nft = l.contractAddress;
+       
+        if (isERC1155(nft)) {
+            IERC1155Upgradeable(nft).safeTransferFrom(address(this), msg.sender, l.tokenId, l.quantity, "0x0");
+        } else {
+            IERC721Upgradeable(nft).safeTransferFrom(address(this), msg.sender, l.tokenId);
+        }
+
+       
+        set.remove(id);
+        delete listings[id];
+
+        emit CancelSale(msg.sender, l.tokenId, l.price, id);
     }
 
     function setMin (uint t) public onlyOwner {
