@@ -1,76 +1,177 @@
-//SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+// SDPX-License-Identifier: MIT
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "./CryptovoxelsAccessControl.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@opengsn/contracts/src/BaseRelayRecipient.sol";
+import "./lib/keyset.sol";
 
-contract ERC721M is ERC721, CryptovoxelsAccessControl {
-    using Counters for Counters.Counter;
+/* We may need to modify the ERCRegistery
+  - whenToken :  if the token is no registered, it will return true;
+*/
+interface IERC20Registry {
+    function register(address _addr, string memory _symbol, uint _decimals, string memory _name) external payable returns (bool);
 
-    Counters.Counter private tokenId;
-    mapping(uint256 => string) metadatas;
+    function togglePause(bool _paused) external;
 
-    uint256 internal fee = 0.01 ether;
-    address _openseaAddress;
+	function unregister(uint _id) external;
 
-    constructor() ERC721("ERC721", "TT") CryptovoxelsAccessControl() {
-        tokenId.increment();
-        _openseaAddress = 0x58807baD0B376efc12F5AD86aAc70E78ed67deaE;
+	function setFee(uint _fee) external;
+
+	function drain() external;
+
+	function token(uint _id) external view returns (address addr, string memory symbol, uint decimals, string memory name);
+
+	function fromAddress(address _addr) external view returns (uint id, string memory symbol, uint decimals, string memory name);
+
+	function fromSymbol(string memory _symbol) external view returns (uint id, address addr, uint decimals, string memory name);
+
+	function registerAs(address _addr, string memory _symbol, uint _decimals,string memory _name) external payable returns (bool);
+}
+
+struct Listing { 
+    address seller;
+    address contractAddress;
+    uint tokenId;
+    uint price;
+    uint quantity;
+}
+
+contract Marketplace is Pausable, Ownable {
+    event NewListing(    
+        address seller,
+        address contractAddress,
+        uint tokenId,
+        uint price,
+        uint quantity,
+        bytes32 listingId
+    );
+
+    event Sale(    
+        address seller,
+        address buyer,
+        address contractAddress,
+        uint tokenId,
+        uint price,
+        bytes32 listingId
+    );
+
+    using ERC165Checker for address;
+    using KeySetLib for KeySetLib.Set;
+
+    mapping (bytes32 => Listing) listings;
+    
+    KeySetLib.Set set;
+
+    IERC20Registry internal registryAddress;
+    uint public minPrice;
+    uint public maxPrice;
+
+    bytes4 public constant IID_IERC1155 = type(IERC1155).interfaceId;
+    bytes4 public constant IID_IERC721 = type(IERC721).interfaceId;
+
+    constructor (address _registryAddress) {
+        registryAddress = IERC20Registry(_registryAddress);
+        minPrice = 1;
+        maxPrice = type(uint).max;
+    }
+   
+    // function getListings () public view returns( Listing[] memory) {
+    //     return listings;
+    // }
+
+    modifier onlyNFT(address _nftAddress) {
+        require(_nftAddress.supportsInterface(IID_IERC1155) || _nftAddress.supportsInterface(IID_IERC721));
+        _;
     }
 
-    function setFee(uint256 _fee) external onlyMember {
-        fee = _fee;
+    function getListingCount () public view returns (uint) {
+        return set.count();
     }
 
-    function getFee() public view returns (uint256){
-        return fee;
+    function getListingIdAtIndex (uint index) public view returns (bytes32) {
+        return set.keyAtIndex(index);
     }
 
-    function mint(uint256 _tokenId, string memory _metadata) external payable {
-        require(fee == msg.value, "invalid amount");
-        require(_tokenId > 0, 'token id cannot be lower than 1');
-        require(!_exists(_tokenId),'token id already exists');
-
-        _mint(msg.sender, _tokenId);
-        metadatas[_tokenId] = _metadata;
+    function getListingAtIndex (uint index) public view returns (Listing memory) {
+        return listings[set.keyAtIndex(index)];
     }
 
-    function tokenURI(uint256 _tokenId)
-        public view virtual override returns (string memory)
-    {
-        require(
-            _exists(_tokenId),
-            "ERC721Metadata: URI query for nonexistent token"
+    function getListing (bytes32 id) public view returns (Listing memory) {
+        return listings[id];
+    }
+
+    function _generateId(address _seller, address _contractAddress, uint256 _tokenId, uint256 _price) private pure returns (bytes32) {
+        return keccak256(abi.encode(_seller, _contractAddress, _tokenId, _price));
+    }
+
+    function list (address contractAddress, uint tokenId, uint price, uint quantity) public onlyNFT(contractAddress) whenNotPaused returns (bytes32) {
+        Listing memory l = Listing(msg.sender, contractAddress, tokenId, price, quantity);
+
+        require(price >= minPrice, 'Price less than minimum');
+        require(price < maxPrice, 'Price more than maximum');
+        require(quantity > 0, 'Quantity is 0');
+
+        bytes32 id = _generateId(msg.sender, contractAddress, tokenId, price);
+        listings[id] = l;
+
+        require(!set.exists(id), 'Listing already exists');
+        set.insert(id);
+
+        emit NewListing(
+            msg.sender,
+            contractAddress,
+            tokenId,
+            price,
+            quantity,
+            id
         );
 
-        return metadatas[_tokenId];
+        return id;
     }
 
-    function supportsInterface(bytes4 interfaceId) 
-            public view override(AccessControl, ERC721) returns (bool) 
-    {
-        return interfaceId == type(IAccessControl).interfaceId || super.supportsInterface(interfaceId);
-    }
+    function buy (bytes32 id, uint quantity) public whenNotPaused {
+        ERC20 token = ERC20(registryAddress);
 
-    function withdraw() external onlyMember {
-        (bool success, ) = payable(msg.sender).call{value: address(this).balance}("");
-        require(success, "failed to withdraw");
-    }
+        Listing memory l = listings[id];
+        ERC1155 nft = ERC1155(l.contractAddress);
 
-    function setOpenseaContractAddress(address _impl) public onlyMember {
-        _openseaAddress = _impl;
-    }
+        require(l.quantity >= quantity, 'Quantity unavailable');
+        require(l.seller != msg.sender, 'Buyer cannot be seller');
+        require(token.transferFrom(msg.sender, l.seller, l.price * quantity));
+        
+        nft.safeTransferFrom(l.seller, msg.sender, l.tokenId, quantity, "0x0");
 
-    function isApprovedForAll(
-        address _owner,
-        address _operator
-    ) public override view returns (bool isOperator) {
-        // if OpenSea's ERC1155 Proxy Address is detected, auto-return true
-       if (_operator == address( _openseaAddress )) {
-            return true;
+        l.quantity -= quantity;
+        listings[id] = l;
+
+        if (l.quantity == 0) {
+            set.remove(id);
+            delete listings[id];
         }
-        // otherwise, use the default ERC1155.isApprovedForAll()
-        return ERC721.isApprovedForAll(_owner, _operator);
+
+        emit Sale(l.seller, msg.sender, l.contractAddress, l.tokenId, l.price, id);
+    }
+
+    function setMin (uint t) public onlyOwner {
+        require(t < maxPrice);
+        minPrice = t;
+    }
+
+    function setMax (uint t) public onlyOwner {
+        require(t > minPrice);
+        maxPrice = t;
+    }
+
+    function pause () public onlyOwner {
+        _pause();
+    }
+
+    function unpause () public onlyOwner {
+        _unpause();
     }
 }
