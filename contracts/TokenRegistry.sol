@@ -35,7 +35,7 @@ contract TokenRegistry is Ownable,Pausable {
 	}
 
 	modifier whenAddressFree(address _addr) {
-		if (mapFromAddress[_addr] != 0)
+		if (isRegistered(_addr))
 			return;
 		_;
 	}
@@ -204,4 +204,11 @@ contract TokenRegistry is Ownable,Pausable {
 		tokenCount = tokenCount + 1;
 		return true;
 	}
+
+    function isRegistered(address _address) public view returns(bool) {
+        if (mapFromAddress[_address] == 0) {
+			return false;
+        }
+        return true;
+    }
 }
