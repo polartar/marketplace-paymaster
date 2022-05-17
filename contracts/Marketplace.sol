@@ -86,8 +86,7 @@ contract Marketplace is PausableUpgradeable, OwnableUpgradeable, UUPSUpgradeable
     using ERC165CheckerUpgradeable for address;
     using KeySetLib for KeySetLib.Set;
 
-    mapping (bytes32 => Listing) listings;
-    
+    mapping (bytes32 => Listing) listings;    
     KeySetLib.Set set;
 
     IERC20Registry immutable internal registryAddress;
@@ -138,6 +137,15 @@ contract Marketplace is PausableUpgradeable, OwnableUpgradeable, UUPSUpgradeable
         return listings[id];
     }
 
+    function getListings() public view returns(Listing[] memory) {
+        uint256 len = getListingCount();
+        Listing[] memory _listings = new Listing[](len);
+        for(uint256 i = 0; i < len; i ++) {
+            _listings[i] = getListingAtIndex(i);
+        }
+        return _listings;
+    }
+
     function _generateId(address _seller, address _contractAddress, uint256 _tokenId, uint256 _price) private pure returns (bytes32) {
         return keccak256(abi.encode(_seller, _contractAddress, _tokenId, _price));
     }
@@ -168,8 +176,9 @@ contract Marketplace is PausableUpgradeable, OwnableUpgradeable, UUPSUpgradeable
         }
 
         bytes32 id = _generateId(msg.sender, nftAddress, tokenId, price);
-        require(!isExistId(id), 'Listing already exists');
 
+        require(!isExistId(id), 'Listing already exists');
+        
         Listing memory l = Listing(msg.sender, nftAddress, tokenId, price, quantity, acceptedPayment);
         listings[id] = l;
         set.insert(id);
