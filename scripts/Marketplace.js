@@ -1,9 +1,10 @@
+const { upgrades } = require("hardhat");
 const hre = require("hardhat");
 
 async function main() {
   // We get the contract to deploy
   const marketplaceFactory = await hre.ethers.getContractFactory("Marketplace");
-  const marketplace = await marketplaceFactory.deploy();
+  const marketplace = await upgrades.deployProxy(marketplaceFactory, ["TokenRegistery Contract"], {kind: "uups"});
 
   await marketplace.deployed();
 
