@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { parseEther } = require("ethers/lib/utils");
-const { ethers } = require("hardhat");
+const { ethers, upgrades } = require("hardhat");
 
 describe("Marketplace TEST", function () {
   let marketplaceFactory;
@@ -40,14 +40,24 @@ describe("Marketplace TEST", function () {
 
     await mockERC1155.mint(1, 4);
 
-    marketplace = await marketplaceFactory.deploy(tokenRegistery.address);
+    marketplace = await upgrades.deployProxy(marketplaceFactory, [tokenRegistery.address], { kind: "uups"});
     await marketplace.deployed();
     
     await tokenRegistery.register(mockERC20.address, "mock",18 ,"mock", {value: parseEther("20")});
 
     await mockERC1155.setApprovalForAll(marketplace.address, true)
   })
-  
+
+  it("Should only let admin upgrade", async function () {
+    let v2Factory = await ethers.getContractFactory("Marketplace2", other);
+    await expect(upgrades.upgradeProxy(marketplace.address, v2Factory)).to.be.reverted;
+
+    v2Factory = await ethers.getContractFactory("Marketplace2", owner);
+    const v2 = await upgrades.upgradeProxy(marketplace.address, v2Factory);
+
+    expect(await v2.name()).to.be.equal("Marketplace2");
+  });
+
   it("Should only list ERC721 or ERC1155", async function () {
     await expect(marketplace.list(owner.address, 1, parseEther("100"), 1, mockERC20.address)).to.be.reverted;
    });

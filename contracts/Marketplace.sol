@@ -14,7 +14,6 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@opengsn/contracts/src/BaseRelayRecipient.sol";
 import "./lib/keyset.sol";
 
-import "hardhat/console.sol";
 /* We may need to modify the ERCRegistery
   - whenToken :  if the token is no registered, it will return true;
   - We should have the function to check if the address is registered
@@ -92,14 +91,18 @@ contract Marketplace is PausableUpgradeable, OwnableUpgradeable, UUPSUpgradeable
     mapping (bytes32 => Listing) listings;    
     KeySetLib.Set set;
 
-    IERC20Registry immutable internal registryAddress;
+    IERC20Registry internal registryAddress;
     uint public minPrice;
     uint public maxPrice;
 
     bytes4 public constant IID_IERC1155 = type(IERC1155Upgradeable).interfaceId;
     bytes4 public constant IID_IERC721 = type(IERC721Upgradeable).interfaceId;
 
-    constructor (address _registryAddress) {
+    function initialize (address _registryAddress) public initializer {
+        __UUPSUpgradeable_init();
+        __Ownable_init();
+        __Pausable_init();
+
         registryAddress = IERC20Registry(_registryAddress);
         minPrice = 1 ether;
         maxPrice = type(uint).max;
