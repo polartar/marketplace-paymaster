@@ -47,6 +47,7 @@ describe("Marketplace TEST", function () {
 
     await mockERC1155.setApprovalForAll(marketplace.address, true)
   })
+  
   it("Should only list ERC721 or ERC1155", async function () {
     await expect(marketplace.list(owner.address, 1, parseEther("100"), 1, mockERC20.address)).to.be.reverted;
    });
@@ -65,10 +66,11 @@ describe("Marketplace TEST", function () {
   
   it("Should list NFT", async function () {
     await marketplace.list(mockERC1155.address, 1, parseEther("1"), 3, mockERC20.address);
-    expect(await marketplace.balanceOf(marketplace.address, 1)).to.be.equal(3);
-    expect(await marketplace.balanceOf(owner.address, 1)).to.be.equal(1);
+    expect(await mockERC1155.balanceOf(marketplace.address, 1)).to.be.equal(3);
+    expect(await mockERC1155.balanceOf(owner.address, 1)).to.be.equal(1);
 
     const id = ethers.utils.solidityKeccak256(["address", "address", "uint256", "uint256"], [owner.address, mockERC1155.address, 1, parseEther("1")]);
+
     expect(await marketplace.isExistId(id)).to.be.equal(true);
    });
 
@@ -77,42 +79,45 @@ describe("Marketplace TEST", function () {
     const id = ethers.utils.solidityKeccak256(["address", "address", "uint256", "uint256"], [owner.address, mockERC1155.address, 1, parseEther("1")]);
    
     const list = await marketplace.getListing(id);
-    expecdt(list.seller).to.be.equal(owner.address);
-    expecdt(list.contractAddress).to.be.equal(mockERC1155.address);
-    expecdt(list.price).to.be.equal(parseEther("1"));
-    expecdt(list.quantity).to.be.equal(3);
+    expect(list.seller).to.be.equal(owner.address);
+    expect(list.contractAddress).to.be.equal(mockERC1155.address);
+    expect(list.price).to.be.equal(parseEther("1"));
+    expect(list.quantity).to.be.equal(3);
   });
 
   it("Should buy the NFT with token", async function () {
     const id = ethers.utils.solidityKeccak256(["address", "address", "uint256", "uint256"], [owner.address, mockERC1155.address, 1, parseEther("1")]);
-    await expect(marketplace.buyWithToken(id, mockERC20.address, 1)).to.be.revertedWith("not existing id");
+    await expect(marketplace.connect(other).buyWithToken(id, 1)).to.be.revertedWith("not existing id");
     await marketplace.list(mockERC1155.address, 1, parseEther("1"), 3, mockERC20.address);
 
     mockAnotherERC20 = await mockERC20Factory.deploy();
     await mockAnotherERC20.deployed();
-    await expect(marketplace.buyWithToken(id, mockAnotherERC20.address, 1)).to.be.revertedWith("not registerd token");
 
-    await expect(marketplace.connect(other).buyWithToken(id, mockERC20.address, 1)).to.be.reverted;
+    await expect(marketplace.connect(other).buyWithToken(id, 1)).to.be.reverted;
 
-    mockERC20.transfer(other.address, parseEther("1"));
-    mockERC20.approve(marketplace.address, parseEther("1"));
+    mockERC20.transfer(other.address, parseEther("4"));
+    mockERC20.connect(other).approve(marketplace.address, parseEther("4"));
 
-    await expect(marketplace.connect(other).buyWithToken(id, mockERC20.address, 1)).to.be.changeTokenBalance(mockERC20, owner, parseEther("1"));
-    expect(await mockERC1155.balanceOf(other.address)).to.be.equal(1);
+    await expect(() => marketplace.connect(other).buyWithToken(id, 1)).to.be.changeTokenBalance(mockERC20, owner, parseEther("1"));
+    expect(await mockERC1155.balanceOf(other.address, 1)).to.be.equal(1);
+    expect(await mockERC1155.balanceOf(marketplace.address, 1)).to.be.equal(2);
+
+    await marketplace.connect(other).buyWithToken(id, 1);
+    await expect(marketplace.connect(other).buyWithToken(id, 2)).to.be.revertedWith("Quantity unavailable");
   });
 
   it("Should buy the NFT with native asset", async function () {
     const id = ethers.utils.solidityKeccak256(["address", "address", "uint256", "uint256"], [owner.address, mockERC1155.address, 1, parseEther("1")]);
-    await expect(marketplace.buy(id, mockERC20.address, 1, {value: parseEther("1")})).to.be.revertedWith("not existing id");
+    await expect(marketplace.buy(id, 1, {value: parseEther("1")})).to.be.revertedWith("not existing id");
     await marketplace.list(mockERC1155.address, 1, parseEther("1"), 3, ethers.constants.AddressZero);
 
     mockAnotherERC20 = await mockERC20Factory.deploy();
     await mockAnotherERC20.deployed();
 
-    await expect(marketplace.connect(other).buy(id, mockERC20.address, 1, {value: parseEther("0.9")})).to.be.reverted;
+    await expect(marketplace.connect(other).buy(id, 1, {value: parseEther("0.9")})).to.be.reverted;
 
-    await expect(marketplace.connect(other).buy(id, mockERC20.address, 1, {value: parseEther("1")})).to.be.changeEtherBalances(owner, parseEther("1"));
-    expect(await mockERC1155.balanceOf(other.address)).to.be.equal(1);
+    await expect(() => marketplace.connect(other).buy(id, 1, {value: parseEther("1")})).to.be.changeEtherBalance(owner, parseEther("1"));
+    expect(await mockERC1155.balanceOf(other.address, 1)).to.be.equal(1);
   });
 
   it("Should not cancel the list when not owner", async function () {
@@ -123,19 +128,20 @@ describe("Marketplace TEST", function () {
     await expect(marketplace.connect(other).cancelList(id)).to.be.revertedWith("not list owner");
 
     // check balance before cancel the list
-    expect(await mockERC1155.balanceOf(owner.address, 1)).to.be.equal(3);
+    expect(await mockERC1155.balanceOf(owner.address, 1)).to.be.equal(1);
     await marketplace.cancelList(id);
     // check balance after cancel the list
     expect(await mockERC1155.balanceOf(owner.address, 1)).to.be.equal(4);
 
-    await expect(marketplace.connect(other).cancelList(id)).to.be.revertedWith("no quanity");
+    await expect(marketplace.connect(other).cancelList(id)).to.be.revertedWith("not existing id");
   });
 
-  t("Should get all listings", async function () {
+  it("Should get all listings", async function () {
     const id1 = ethers.utils.solidityKeccak256(["address", "address", "uint256", "uint256"], [owner.address, mockERC1155.address, 1, parseEther("1")]);
     await marketplace.list(mockERC1155.address, 1, parseEther("1"), 3, mockERC20.address);
 
     mockERC1155.connect(other).mint(2, 4)
+    mockERC1155.connect(other).setApprovalForAll(marketplace.address, true);
     const id2 = ethers.utils.solidityKeccak256(["address", "address", "uint256", "uint256"], [other.address, mockERC1155.address, 2, parseEther("1")]);
     await marketplace.connect(other).list(mockERC1155.address, 2, parseEther("1"), 2, mockERC20.address);
 
