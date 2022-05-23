@@ -57,8 +57,8 @@ describe("CaptureTheFlag TEST", function () {
 
   it ('Runs with GSN', async () => {
     const Web3HttpProvider = require( 'web3-providers-http')
-    // const CaptureTheFlag = require("../artifacts/contracts/CaptureTheFlag.sol/CaptureTheFlag.json")
-    // const NaivePaymaster = require("../artifacts/contracts/NaivePaymaster.sol/NaivePaymaster.json")
+    const CaptureTheFlag = require("../artifacts/contracts/CaptureTheFlag.sol/CaptureTheFlag.json")
+    const NaivePaymaster = require("../artifacts/contracts/NaivePaymaster.sol/NaivePaymaster.json")
 
 		let env = await GsnTestEnvironment.startGsn('localhost')
 
@@ -102,47 +102,23 @@ describe("CaptureTheFlag TEST", function () {
     let gsnProvider = await RelayProvider.newProvider({
 				provider: web3provider,
 				config: { paymasterAddress: paymaster.address} }).init()
-    conf = { paymasterAddress: paymaster.address }
-    gsnProvider = await Gsn.RelayProvider.newProvider({provider: web3provider, config: conf}).init()
-    // const provider = new ethers.providers.Web3Provider(gsnProvider)
-		// const acct = provider.provider.newAccount()
-		// const acct2 = provider.provider.newAccount()
+    const provider = new ethers.providers.Web3Provider(gsnProvider)
+		const acct = provider.provider.newAccount()
+		
+    // const acct2 = provider.provider.newAccount()
     // const account = new ethers.Wallet(Buffer.from("1".repeat(64), "hex"));
     // gsnProvider.addAccount(account.privateKey);
     // etherProvider = new ethers.providers.Web3Provider(gsnProvider);
     // signer = etherProvider.getSigner(account.address);
     // console.log("Balance", (await etherProvider.getBalance(account.address)).toString())
-
-    // expect(await paymaster.trustedForwarder()).to.equal(forwarderAddress);
-    // expect(await flag.isTrustedForwarder(forwarderAddress)).to.equal(true);
-    // await accounts[0].sendTransaction({
-    //   to: account.address,
-    //   value: parseEther("0.1")
-    // })
     // await flag.connect(signer).captureFlag();
-		// const contract = await new
-		// 	ethers.Contract(flag.address, CaptureTheFlag.abi,
-		// 		provider.getSigner(acct.address, acct.privateKey))
-		// const contract2 = await new
-		// 	ethers.Contract(flag.address, CaptureTheFlag.abi,
-		// 		provider.getSigner(acct2.address, acct2.privateKey))
 
-		// await callThroughGsn(contract, provider);
-		// expect(result).to.be.equal(0);
+    expect(await paymaster.trustedForwarder()).to.equal(forwarderAddress);
+    expect(await flag.isTrustedForwarder(forwarderAddress)).to.equal(true);
+		const contract = await new
+			ethers.Contract(flag.address, CaptureTheFlag.abi,
+				provider.getSigner(acct.address, acct.privateKey))
 
-		// var result = await callThroughGsn(contract, provider);
-    // expect(result.toLowerCase()).to.be.equal(acct.address.toLowerCase());
-		// assert.equal(result.toLowerCase(), acct.address.toLowerCase(),
-		// 	"Wrong second last caller (should be acct)");
-
-		// var result = await callThroughGsn(contract2, provider);
-		// assert.equal(result.toLowerCase(), acct.address.toLowerCase(),
-		// 	"Wrong third last caller (should be acct)");
-
-		// var result = await callThroughGsn(contract, provider);
-		// assert.equal(result.toLowerCase(), acct2.address.toLowerCase(),
-		// 	"Wrong fourth last caller (should be acct2)");
-
-    
+		await callThroughGsn(contract, provider);
 	}); 
 });
