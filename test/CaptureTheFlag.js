@@ -70,7 +70,7 @@ describe("CaptureTheFlag TEST", function () {
 		// 	CaptureTheFlag.abi,
 		// 	CaptureTheFlag.bytecode,
 		// 	deploymentProvider.getSigner())
-    const factory = await ethers.getContractFactory("CaptureTheFlag", deploymentProvider.getSigner());
+    const factory = await ethers.getContractFactory("CaptureTheFlag");
 
 		const flag = await factory.deploy(forwarderAddress)
 		await flag.deployed()
@@ -80,7 +80,7 @@ describe("CaptureTheFlag TEST", function () {
 		// 	NaivePaymaster.bytecode,
 		// 	deploymentProvider.getSigner()
 		// )
-    const paymasterFactory = await ethers.getContractFactory("NaivePaymaster", deploymentProvider.getSigner());
+    const paymasterFactory = await ethers.getContractFactory("NaivePaymaster");
 
     const paymaster = await paymasterFactory.deploy()
     await paymaster.deployed()
@@ -97,7 +97,6 @@ describe("CaptureTheFlag TEST", function () {
       to: paymaster.address,
       value: parseEther("0.1")
     })
-    Gsn = require("@opengsn/provider")
 
     let gsnProvider = await RelayProvider.newProvider({
 				provider: web3provider,
@@ -105,7 +104,6 @@ describe("CaptureTheFlag TEST", function () {
     const provider = new ethers.providers.Web3Provider(gsnProvider)
 		const acct = provider.provider.newAccount()
 		
-    // const acct2 = provider.provider.newAccount()
     // const account = new ethers.Wallet(Buffer.from("1".repeat(64), "hex"));
     // gsnProvider.addAccount(account.privateKey);
     // etherProvider = new ethers.providers.Web3Provider(gsnProvider);
