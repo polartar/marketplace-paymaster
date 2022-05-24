@@ -45,13 +45,14 @@ module.exports = {
     },
     localhost: {
       url: "http://127.0.0.1:8545",
+      chainId: 1337
     },
     development: {
       url: "http://127.0.0.1:50770",
     },
   },
   mocha: {
-    timeout: 40000
+    timeout: 100000
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY

@@ -6,7 +6,7 @@ pragma solidity ^0.8.4;
 import "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
 contract CaptureTheFlag is BaseRelayRecipient {
-	string public override versionRecipient = "2.0.0";
+	string public override versionRecipient = "2.0.3";
 
 	event FlagCaptured(address _from, address _to);
 

@@ -32,11 +32,6 @@
       "kind": "uups"
     },
     {
-      "address": "0x9E545E3C0baAB3E08CdfD552C960A1050f373042",
-      "txHash": "0xc31ed93578ad017954a4e16557e8746c95bad5b8c1008de5109926793d8f014a",
-      "kind": "uups"
-    },
-    {
       "address": "0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf",
       "txHash": "0x3161c12bf4ef7d097b4b7c09c78da10cb582f2f90ba2e35e803ea390ac00b5b8",
       "kind": "uups"
@@ -70,12 +65,67 @@
       "address": "0x18E317A7D70d8fBf8e6E893616b52390EbBdb629",
       "txHash": "0xf29410a533ca5485325eb636f7dee8e643593872b7399683152175bbc0290f44",
       "kind": "uups"
+    },
+    {
+      "address": "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
+      "txHash": "0x1d1c2dbbd645e2837cc37aa643204033c4aeebd2413a245660122a42d4719ffa",
+      "kind": "uups"
+    },
+    {
+      "address": "0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE",
+      "txHash": "0xae907ebc36e13b4db5239ce26395b7583b2d8f907936c50023097cb0d3a46f35",
+      "kind": "uups"
+    },
+    {
+      "address": "0x4A679253410272dd5232B3Ff7cF5dbB88f295319",
+      "txHash": "0x877bba1a3ca295d612eedbe66e136627618c8fe3542a3fa8bc407b4cbd4c9e62",
+      "kind": "uups"
+    },
+    {
+      "address": "0x9E545E3C0baAB3E08CdfD552C960A1050f373042",
+      "txHash": "0xf12dc001844d8366135c1b5d8dffc473bca33794062f6569dfd61afc06568741",
+      "kind": "uups"
+    },
+    {
+      "address": "0x4826533B4897376654Bb4d4AD88B7faFD0C98528",
+      "txHash": "0x38c5bced75e6b9aaf23b9104ed489a12afef52b4ce798829180f5b927663ae51",
+      "kind": "uups"
+    },
+    {
+      "address": "0x4c5859f0F772848b2D91F1D83E2Fe57935348029",
+      "txHash": "0xd10b8375228f5efcbb03ae182f0fcea89473f5d6da38a22c2b705b5444c48821",
+      "kind": "uups"
+    },
+    {
+      "address": "0xc351628EB244ec633d5f21fBD6621e1a683B1181",
+      "txHash": "0x0198b46fb88633cc8b6c6e13b1bbca7d553e0529df95dd8231c4bc83a71ea0ff",
+      "kind": "uups"
+    },
+    {
+      "address": "0xdbC43Ba45381e02825b14322cDdd15eC4B3164E6",
+      "txHash": "0x4d3b216d795527fa88ed7fc87d2a400a9a7d4f62ac611bec58bd56761760d3e5",
+      "kind": "uups"
+    },
+    {
+      "address": "0x202CCe504e04bEd6fC0521238dDf04Bc9E8E15aB",
+      "txHash": "0x8af46ef5f5ac490e5251f22a7689446a314afedf2f0eaf36cd304992b9b0e0b2",
+      "kind": "uups"
+    },
+    {
+      "address": "0x1c85638e118b37167e9298c2268758e058DdfDA0",
+      "txHash": "0x6ca747f52a6a09101abd0c8743cb740493c9cbfb7cb731e8adad1c6edeae8b4d",
+      "kind": "uups"
+    },
+    {
+      "address": "0x5c74c94173F05dA1720953407cbb920F3DF9f887",
+      "txHash": "0xb1ef469b0baec086fec8234fc5f1c4b3628deddf97358241a20c18962cdc2be3",
+      "kind": "uups"
     }
   ],
   "impls": {
     "d3446fabd04be22f6732d67b8eacc8cee24fcc9d48643384c917885602755417": {
-      "address": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
-      "txHash": "0x9f257352eb43e0c5e10236c0b950ad4be8d4b15b3d51873870cbe8e9400347f3",
+      "address": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
+      "txHash": "0x0299395b6301971a6f2f112b3f587d9e59bd5ac612cc648933b12d94aa94b4a4",
       "layout": {
         "storage": [
           {
@@ -155,7 +205,7 @@
             "label": "listings",
             "offset": 0,
             "slot": "251",
-            "type": "t_mapping(t_bytes32,t_struct(Listing)8889_storage)",
+            "type": "t_mapping(t_bytes32,t_struct(Listing)10622_storage)",
             "contract": "Marketplace",
             "src": "contracts/Marketplace.sol:91"
           },
@@ -163,7 +213,7 @@
             "label": "set",
             "offset": 0,
             "slot": "252",
-            "type": "t_struct(Set)10533_storage",
+            "type": "t_struct(Set)12390_storage",
             "contract": "Marketplace",
             "src": "contracts/Marketplace.sol:92"
           },
@@ -171,7 +221,7 @@
             "label": "registryAddress",
             "offset": 0,
             "slot": "254",
-            "type": "t_contract(IERC20Registry)8876",
+            "type": "t_contract(IERC20Registry)10609",
             "contract": "Marketplace",
             "src": "contracts/Marketplace.sol:94"
           },
@@ -217,11 +267,11 @@
             "label": "bytes32",
             "numberOfBytes": "32"
           },
-          "t_contract(IERC20Registry)8876": {
+          "t_contract(IERC20Registry)10609": {
             "label": "contract IERC20Registry",
             "numberOfBytes": "20"
           },
-          "t_mapping(t_bytes32,t_struct(Listing)8889_storage)": {
+          "t_mapping(t_bytes32,t_struct(Listing)10622_storage)": {
             "label": "mapping(bytes32 => struct Listing)",
             "numberOfBytes": "32"
           },
@@ -229,7 +279,7 @@
             "label": "mapping(bytes32 => uint256)",
             "numberOfBytes": "32"
           },
-          "t_struct(Listing)8889_storage": {
+          "t_struct(Listing)10622_storage": {
             "label": "struct Listing",
             "members": [
               {
@@ -271,7 +321,7 @@
             ],
             "numberOfBytes": "192"
           },
-          "t_struct(Set)10533_storage": {
+          "t_struct(Set)12390_storage": {
             "label": "struct KeySetLib.Set",
             "members": [
               {
@@ -302,7 +352,7 @@
     },
     "18356a6b9571791ccc4f46c8209b1d72587a171a644bc5e44c8e5a3ee83175aa": {
       "address": "0x8464135c8F25Da09e49BC8782676a84730C318bC",
-      "txHash": "0x55d807f95632d8fef0b4ad12bc021ee5efd90ad30577da4cb139e20c754f3231",
+      "txHash": "0x755449e723c9470588aeb0b96e1cb194b47ab79c28b10cfe161c4ba2ddea4a69",
       "layout": {
         "storage": [
           {
@@ -382,7 +432,7 @@
             "label": "listings",
             "offset": 0,
             "slot": "251",
-            "type": "t_mapping(t_bytes32,t_struct(Listing)8889_storage)",
+            "type": "t_mapping(t_bytes32,t_struct(Listing)10622_storage)",
             "contract": "Marketplace",
             "src": "contracts/Marketplace.sol:91"
           },
@@ -390,7 +440,7 @@
             "label": "set",
             "offset": 0,
             "slot": "252",
-            "type": "t_struct(Set)10533_storage",
+            "type": "t_struct(Set)12390_storage",
             "contract": "Marketplace",
             "src": "contracts/Marketplace.sol:92"
           },
@@ -398,7 +448,7 @@
             "label": "registryAddress",
             "offset": 0,
             "slot": "254",
-            "type": "t_contract(IERC20Registry)8876",
+            "type": "t_contract(IERC20Registry)10609",
             "contract": "Marketplace",
             "src": "contracts/Marketplace.sol:94"
           },
@@ -444,11 +494,11 @@
             "label": "bytes32",
             "numberOfBytes": "32"
           },
-          "t_contract(IERC20Registry)8876": {
+          "t_contract(IERC20Registry)10609": {
             "label": "contract IERC20Registry",
             "numberOfBytes": "20"
           },
-          "t_mapping(t_bytes32,t_struct(Listing)8889_storage)": {
+          "t_mapping(t_bytes32,t_struct(Listing)10622_storage)": {
             "label": "mapping(bytes32 => struct Listing)",
             "numberOfBytes": "32"
           },
@@ -456,7 +506,7 @@
             "label": "mapping(bytes32 => uint256)",
             "numberOfBytes": "32"
           },
-          "t_struct(Listing)8889_storage": {
+          "t_struct(Listing)10622_storage": {
             "label": "struct Listing",
             "members": [
               {
@@ -498,7 +548,7 @@
             ],
             "numberOfBytes": "192"
           },
-          "t_struct(Set)10533_storage": {
+          "t_struct(Set)12390_storage": {
             "label": "struct KeySetLib.Set",
             "members": [
               {

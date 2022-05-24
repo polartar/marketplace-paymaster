@@ -2,8 +2,11 @@ const { ethers } = require("hardhat");
 const { expect } = require("chai");
 const { RelayProvider } = require('@opengsn/gsn')
 const { GsnTestEnvironment } = require('@opengsn/gsn/dist/GsnTestEnvironment' );
-const { parseEther } = require("ethers/lib/utils");
+const { parseEther, formatEther } = require("ethers/lib/utils");
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 const callThroughGsn = async (contract, provider) => {
   const transaction = await contract.captureFlag()
   const receipt = await provider.waitForTransaction(transaction.hash)
@@ -61,27 +64,16 @@ describe("CaptureTheFlag TEST", function () {
     const NaivePaymaster = require("../artifacts/contracts/NaivePaymaster.sol/NaivePaymaster.json")
 
 		let env = await GsnTestEnvironment.startGsn('localhost')
-
-		const { forwarderAddress , relayHubAddress } = env.contractsDeployment
+    const { forwarderAddress , relayHubAddress, paymasterAddress } = env.contractsDeployment
 		const web3provider = new Web3HttpProvider('http://localhost:8545')
 		const deploymentProvider = new ethers.providers.Web3Provider(web3provider)
 
-    // const factory = new ethers.ContractFactory(
-		// 	CaptureTheFlag.abi,
-		// 	CaptureTheFlag.bytecode,
-		// 	deploymentProvider.getSigner())
-    const factory = await ethers.getContractFactory("CaptureTheFlag");
+    const factory = await ethers.getContractFactory("CaptureTheFlag", deploymentProvider.getSigner());
 
 		const flag = await factory.deploy(forwarderAddress)
 		await flag.deployed()
 
-    // const paymasterFactory = new ethers.ContractFactory(
-		// 	NaivePaymaster.abi,
-		// 	NaivePaymaster.bytecode,
-		// 	deploymentProvider.getSigner()
-		// )
-    const paymasterFactory = await ethers.getContractFactory("NaivePaymaster");
-
+    const paymasterFactory = await ethers.getContractFactory("NaivePaymaster", deploymentProvider.getSigner());
     const paymaster = await paymasterFactory.deploy()
     await paymaster.deployed()
 
@@ -89,34 +81,17 @@ describe("CaptureTheFlag TEST", function () {
     await paymaster.setRelayHub(relayHubAddress)
     await paymaster.setTrustedForwarder(forwarderAddress)
 
-		// web3.eth.sendTransaction({
-		// 	from:accounts[0],
-		// 	to:paymaster.address,
-		// 	value:1e18})
-    await accounts[0].sendTransaction({
-      to: paymaster.address,
-      value: parseEther("0.1")
-    })
-
+    
     let gsnProvider = await RelayProvider.newProvider({
 				provider: web3provider,
-				config: { paymasterAddress: paymaster.address} }).init()
+				config: { paymasterAddress: paymasterAddress},
+         }).init()
     const provider = new ethers.providers.Web3Provider(gsnProvider)
-		const acct = provider.provider.newAccount()
+		const acct = gsnProvider.newAccount()
 		
-    // const account = new ethers.Wallet(Buffer.from("1".repeat(64), "hex"));
-    // gsnProvider.addAccount(account.privateKey);
-    // etherProvider = new ethers.providers.Web3Provider(gsnProvider);
-    // signer = etherProvider.getSigner(account.address);
-    // console.log("Balance", (await etherProvider.getBalance(account.address)).toString())
-    // await flag.connect(signer).captureFlag();
-
-    expect(await paymaster.trustedForwarder()).to.equal(forwarderAddress);
-    expect(await flag.isTrustedForwarder(forwarderAddress)).to.equal(true);
 		const contract = await new
 			ethers.Contract(flag.address, CaptureTheFlag.abi,
 				provider.getSigner(acct.address, acct.privateKey))
-
-		await callThroughGsn(contract, provider);
+    await contract.captureFlag();
 	}); 
 });
