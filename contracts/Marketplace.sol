@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@opengsn/contracts/src/BaseRelayRecipient.sol";
 import "./lib/keyset.sol";
-import "hardhat/console.sol";
+
 /* We may need to modify the ERCRegistery
   - whenToken :  if the token is no registered, it will return true;
   - We should have the function to check if the address is registered
