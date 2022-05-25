@@ -19,7 +19,13 @@ npx hardhat help
 
 ## How to test the project?
 
-  npx hardhat test
+  ### Test normal Marketplace features
+    npx hardhat test test/marketplace.js
+  ### Test GSN feature/gasless
+    - Run gsn node for local environment
+      `npm run gsn`
+      
+    - run `npx hardaht test test/MarketplaceGSN.js --network localhost`
 
 ## How to deploy the contracts?
 
