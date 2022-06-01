@@ -1,4 +1,4 @@
-# Simple ERC721 with metadata
+# Simple Marketplace without gas fee
 Try running some of the following tasks:
 
 ```shell
